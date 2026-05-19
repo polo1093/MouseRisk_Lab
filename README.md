@@ -272,26 +272,3 @@ Les tests couvrent l'API FastAPI, l'agrégateur, BotD et l'heuristique souris.
     ├── human_mouse_test.py    # Script de test simple avec pyclick
     └── real_mouse_lab.py      # Lab de mouvements souris réels
 ```
-
-## Points forts
-
-- Architecture simple à comprendre et à modifier.
-- Bon découpage entre interface, API et détecteurs.
-- Approche prudente : le projet parle de risque, pas de vérité absolue.
-- Bonne base pour ajouter une agrégation temporelle, des seuils métier ou un tableau de bord.
-
-## Limites
-
-- Un bot avancé peut imiter des trajectoires humaines.
-- BotD cible surtout Selenium, WebDriver, headless et autres signaux d'automatisation connus.
-- Certains environnements verrouillés ou atypiques peuvent créer des faux positifs.
-- La cinématique souris reste probabiliste : elle doit être utilisée avec des seuils, du contexte et de la friction progressive.
-
-## Idées d'amélioration
-
-- Ajouter une EMA pour lisser le score dans le temps.
-- Stocker la télémétrie dans SQLite pour comparer plusieurs sessions.
-- Ajouter des seuils configurables : `low`, `medium`, `high`.
-- Afficher un mini graphique d'évolution du score dans l'overlay.
-- Ajouter des tests unitaires sur les détecteurs.
-
