@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Bot Risk Game</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <title>MouseRisk Lab</title>
+  <link rel="stylesheet" href="/static/style.css?v=20260508-3" />
 </head>
 <body>
   <main class="app-shell">
     <section class="hero">
       <div>
         <div class="eyebrow">POC FastAPI + navigateur</div>
-        <h1>Bot Risk Game</h1>
+        <h1>MouseRisk Lab</h1>
         <p>Interagissez avec la zone de jeu pour estimer un score de risque bot à partir des mouvements, clics et signaux navigateur.</p>
       </div>
       <div class="hero-actions" aria-label="Indicateurs du projet">
@@ -38,7 +38,7 @@
           </label>
           <label>
             Region ecran
-            <input id="programRegion" type="text" value="100,390,1100,760" inputmode="numeric" />
+            <input id="programRegion" type="text" value="" inputmode="numeric" />
           </label>
           <label>
             Clics
@@ -118,8 +118,8 @@
 
   </main>
 
-  <script src="/static/bot_risk.js"></script>
-  <script src="/static/program_runner.js"></script>
+  <script src="/static/bot_risk.js?v=20260508-3"></script>
+  <script src="/static/program_runner.js?v=20260508-3"></script>
   <script>
     BotRisk.start({
       scoreEndpoint: "/api/score",

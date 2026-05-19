@@ -1,10 +1,10 @@
 <svg width="1500" height="820" viewBox="0 0 1500 820" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">Aperçu de l'interface Bot Risk Game</title>
+  <title id="title">Aperçu de l'interface MouseRisk Lab</title>
   <desc id="desc">Aperçu de la page avec une zone de jeu, des cibles cliquables et un panneau de probabilité bot.</desc>
   <rect width="1500" height="820" fill="#EEF2F7"/>
   <circle cx="170" cy="90" r="260" fill="#CFFAFE" opacity="0.55"/>
   <text x="48" y="38" fill="#0891B2" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="800">POC FASTAPI + NAVIGATEUR</text>
-  <text x="48" y="104" fill="#080F1F" font-family="Segoe UI, Arial, sans-serif" font-size="78" font-weight="900">Bot Risk Game</text>
+  <text x="48" y="104" fill="#080F1F" font-family="Segoe UI, Arial, sans-serif" font-size="78" font-weight="900">MouseRisk Lab</text>
   <text x="48" y="154" fill="#64748B" font-family="Segoe UI, Arial, sans-serif" font-size="25">Interagissez avec la zone de jeu pour estimer un score de risque bot à partir des</text>
   <text x="48" y="194" fill="#64748B" font-family="Segoe UI, Arial, sans-serif" font-size="25">mouvements, clics et signaux navigateur.</text>
 

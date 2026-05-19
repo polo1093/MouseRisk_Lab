@@ -58,7 +58,7 @@ def test_index_serves_page(client: TestClient) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Bot Risk Game" in response.text
+    assert "MouseRisk Lab" in response.text
 
 
 def test_score_returns_signals_and_stores_telemetry(client: TestClient) -> None:
@@ -68,7 +68,8 @@ def test_score_returns_signals_and_stores_telemetry(client: TestClient) -> None:
     body = response.json()
     assert body["model"] == "combo_v1"
     assert body["bot_probability"] == 0.18
-    assert set(body["signals"]) == {"mouse_heuristic_v1", "botd_v2"}
+    assert set(body["signals"]) == {"mouse_heuristic_v1", "botd_v2", "external_fe_bot_v1"}
+    assert body["signals"]["external_fe_bot_v1"]["score"] == 0.0
 
     telemetry = client.get("/api/telemetry", params={"session_id": "session-a"})
     assert telemetry.status_code == 200
@@ -163,4 +164,42 @@ def test_run_mouse_program_executes_selected_file(
     body = response.json()
     assert body["ok"] is True
     assert body["returncode"] == 0
+    assert "echo region=1,2,3,4 count=7" in body["stdout"]
+
+
+def test_run_mouse_program_accepts_legacy_timeout_and_spaced_region(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    program_dir = tmp_path / "mouse_programs"
+    program_dir.mkdir()
+    program = program_dir / "echo_program.py"
+    program.write_text(
+        "from __future__ import annotations\n"
+        "import argparse\n"
+        "parser = argparse.ArgumentParser()\n"
+        "parser.add_argument('--base-url')\n"
+        "parser.add_argument('--region')\n"
+        "parser.add_argument('--count')\n"
+        "parser.add_argument('--focus-wait')\n"
+        "args = parser.parse_args()\n"
+        "print(f'echo region={args.region} count={args.count}')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(app_module, "MOUSE_PROGRAM_DIR", program_dir)
+
+    response = client.post(
+        "/api/mouse-programs/run",
+        json={
+            "filename": "echo_program.py",
+            "region": "1, 2, 3, 4",
+            "count": 7,
+            "focus_wait": 0,
+            "timeout": 90,
+            "base_url": "http://testserver",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
     assert "echo region=1,2,3,4 count=7" in body["stdout"]

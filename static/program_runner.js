@@ -10,21 +10,39 @@ const ProgramRunner = (() => {
     const viewport = window.visualViewport;
     const viewportLeft = viewport ? viewport.offsetLeft : 0;
     const viewportTop = viewport ? viewport.offsetTop : 0;
-    const chromeLeft = Math.max(0, Math.round((window.outerWidth - window.innerWidth) / 2));
-    const chromeTop = Math.max(0, window.outerHeight - window.innerHeight - chromeLeft);
-    const screenLeft = Number.isFinite(window.screenLeft) ? window.screenLeft : window.screenX;
-    const screenTop = Number.isFinite(window.screenTop) ? window.screenTop : window.screenY;
-    const x1 = Math.round((screenLeft + chromeLeft + viewportLeft + rect.left) * scale);
-    const y1 = Math.round((screenTop + chromeTop + viewportTop + rect.top) * scale);
-    const x2 = Math.round((screenLeft + chromeLeft + viewportLeft + rect.right) * scale);
-    const y2 = Math.round((screenTop + chromeTop + viewportTop + rect.bottom) * scale);
+
+    const hasFirefoxViewportOrigin =
+      Number.isFinite(window.mozInnerScreenX) && Number.isFinite(window.mozInnerScreenY);
+    const viewportScreenLeft = hasFirefoxViewportOrigin
+      ? window.mozInnerScreenX
+      : (Number.isFinite(window.screenLeft) ? window.screenLeft : window.screenX) +
+        Math.max(0, (window.outerWidth - window.innerWidth) / 2);
+    const viewportScreenTop = hasFirefoxViewportOrigin
+      ? window.mozInnerScreenY
+      : (Number.isFinite(window.screenTop) ? window.screenTop : window.screenY) +
+        Math.max(0, window.outerHeight - window.innerHeight);
+
+    const x1 = Math.round((viewportScreenLeft + viewportLeft + rect.left) * scale);
+    const y1 = Math.round((viewportScreenTop + viewportTop + rect.top) * scale);
+    const x2 = Math.round((viewportScreenLeft + viewportLeft + rect.right) * scale);
+    const y2 = Math.round((viewportScreenTop + viewportTop + rect.bottom) * scale);
     return `${x1},${y1},${x2},${y2}`;
   }
 
   function describeWindow() {
     const screenLeft = Number.isFinite(window.screenLeft) ? window.screenLeft : window.screenX;
     const screenTop = Number.isFinite(window.screenTop) ? window.screenTop : window.screenY;
-    return `fenetre=(${Math.round(screenLeft)},${Math.round(screenTop)}) viewport=${window.innerWidth}x${window.innerHeight} scale=${window.devicePixelRatio || 1}`;
+    const firefoxOrigin =
+      Number.isFinite(window.mozInnerScreenX) && Number.isFinite(window.mozInnerScreenY)
+        ? ` mozViewport=(${Math.round(window.mozInnerScreenX)},${Math.round(window.mozInnerScreenY)})`
+        : "";
+    return `fenetre=(${Math.round(screenLeft)},${Math.round(screenTop)}) viewport=${window.innerWidth}x${window.innerHeight} scale=${window.devicePixelRatio || 1}${firefoxOrigin}`;
+  }
+
+  function isValidRegion(value) {
+    if (!/^-?\d+,-?\d+,-?\d+,-?\d+$/.test(value)) return false;
+    const [x1, y1, x2, y2] = value.split(",").map((part) => Number.parseInt(part, 10));
+    return Number.isFinite(x1) && Number.isFinite(y1) && Number.isFinite(x2) && Number.isFinite(y2) && x2 > x1 && y2 > y1;
   }
 
   async function getJSON(url) {
@@ -39,7 +57,16 @@ const ProgramRunner = (() => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      let detail = "";
+      try {
+        const errorBody = await response.json();
+        detail = errorBody.detail ? ` ${JSON.stringify(errorBody.detail)}` : "";
+      } catch {
+        detail = "";
+      }
+      throw new Error(`HTTP ${response.status}${detail}`);
+    }
     return response.json();
   }
 
@@ -94,19 +121,28 @@ const ProgramRunner = (() => {
         return;
       }
 
-      regionEl.value = estimateScreenRegion(target);
+      const count = Number.parseInt(countEl.value, 10);
+      const focusWait = Number.parseFloat(focusWaitEl.value);
+      if (!isValidRegion(regionEl.value.trim())) {
+        regionEl.value = estimateScreenRegion(target);
+      }
+      if (!isValidRegion(regionEl.value.trim())) {
+        setOutput(outputEl, `Region ecran invalide: ${regionEl.value || "(vide)"}`);
+        return;
+      }
+
       runButton.disabled = true;
       setOutput(
         outputEl,
-        `Lancement de ${filename}...\nRegion visible: ${regionEl.value}\n${describeWindow()}\nF12 pour arreter.`
+        `Lancement de ${filename}...\nRegion utilisee: ${regionEl.value.trim()}\n${describeWindow()}\nF12 pour arreter.`
       );
 
       try {
         const result = await postJSON(runEndpoint, {
           filename,
           region: regionEl.value.trim(),
-          count: Number(countEl.value),
-          focus_wait: Number(focusWaitEl.value),
+          count: Number.isFinite(count) ? count : 8,
+          focus_wait: Number.isFinite(focusWait) ? focusWait : 3,
           timeout: 15,
           base_url: window.location.origin,
         });
@@ -139,6 +175,7 @@ const ProgramRunner = (() => {
       setOutput(outputEl, `Region estimee: ${regionEl.value}\n${describeWindow()}`);
     });
 
+    regionEl.value = estimateScreenRegion(target);
     refreshPrograms();
   }
 

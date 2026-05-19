@@ -66,6 +66,7 @@ const BotRisk = (() => {
     const speed = [];
     let pathLen = 0;
     const turnAngles = [];
+    let mousemoveTeleportCount = 0;
 
     for (let i = 1; i < n; i++) {
       const a = points[i - 1], b = points[i];
@@ -76,7 +77,11 @@ const BotRisk = (() => {
       const dist = Math.hypot(dx, dy);
       pathLen += dist;
 
-      speed.push((dist / dti) * 1000.0); // px/s
+      const speedPxPerSecond = (dist / dti) * 1000.0;
+      speed.push(speedPxPerSecond); // px/s
+      if (a.type === "m" && b.type === "m" && speedPxPerSecond > 8000.0) {
+        mousemoveTeleportCount += 1;
+      }
     }
 
     for (let i = 2; i < n; i++) {
@@ -91,9 +96,14 @@ const BotRisk = (() => {
     const straightness = pathLen > 0 ? Math.min(1, displacement / pathLen) : 0;
 
     const trustedRatio = points.filter(p => p.isTrusted).length / n;
+    const durationMs = Math.max(0, end.t - start.t);
+    const mousemoveCount = points.filter(p => p.type === "m").length;
 
     return {
       n,
+      duration_ms: durationMs,
+      mousemove_count: mousemoveCount,
+      mousemove_teleport_count: mousemoveTeleportCount,
       mean_dt: mean(dt),
       std_dt: std(dt),
       p90_dt: quantile(dt, 0.90),
@@ -273,6 +283,11 @@ const BotRisk = (() => {
       if (signals.mouse_heuristic_v1) {
         const mousePct = Math.round(signals.mouse_heuristic_v1.score * 100);
         lines.push(`Mouse: ${mousePct}%`);
+      }
+      if (signals.external_fe_bot_v1) {
+        const externalPct = Math.round(signals.external_fe_bot_v1.score * 100);
+        const status = signals.external_fe_bot_v1.raw?.status;
+        lines.push(`External ML: ${externalPct}%${status && status !== "ok" ? ` (${status})` : ""}`);
       }
 
       lines.forEach((text) => {

@@ -219,7 +219,7 @@ def run_profile(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Real screen mouse/click lab for Bot Risk Game"
+        description="Real screen mouse/click lab for MouseRisk Lab"
     )
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--region", required=True, type=parse_region)

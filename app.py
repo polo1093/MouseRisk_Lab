@@ -12,17 +12,18 @@ from fastapi import FastAPI
 from fastapi import Query
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from detectors.aggregator import Aggregator
 from detectors.botd_v2 import BotdV2
+from detectors.external_fe_bot_v1 import ExternalFeBotV1
 from detectors.heuristic_mouse_v1 import HeuristicMouseV1
 
 APP_DIR = Path(__file__).resolve().parent
 MOUSE_PROGRAM_DIR = APP_DIR / "mouse_programs"
 MAX_MOUSE_PROGRAM_SECONDS = 15.0
 DEFAULT_MOUSE_CLICK_RATE_HZ = 0.7
-app = FastAPI(title="Bot risk (browser game) — heuristic scoring")
+app = FastAPI(title="MouseRisk Lab — heuristic bot-risk scoring")
 
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 
@@ -40,6 +41,9 @@ class FeaturePayload(BaseModel):
     mean_abs_turn: float
     trusted_ratio: float = Field(..., ge=0.0, le=1.0)
     pointer_type: Optional[str] = None
+    duration_ms: Optional[float] = None
+    mousemove_count: Optional[float] = None
+    mousemove_teleport_count: Optional[float] = None
 
     # minimal “automation / environment” signals (no training, just heuristics)
     webdriver: Optional[bool] = None
@@ -61,11 +65,18 @@ class MouseProgramRunPayload(BaseModel):
     region: str = Field(..., pattern=r"^-?\d+,-?\d+,-?\d+,-?\d+$")
     count: int = Field(20, ge=1, le=100)
     focus_wait: float = Field(3.0, ge=0.0, le=30.0)
-    timeout: float = Field(MAX_MOUSE_PROGRAM_SECONDS, ge=1.0, le=MAX_MOUSE_PROGRAM_SECONDS)
+    timeout: float = Field(MAX_MOUSE_PROGRAM_SECONDS, ge=1.0, le=600.0)
     base_url: str = Field("http://127.0.0.1:8000", min_length=1, max_length=200)
 
+    @field_validator("region", mode="before")
+    @classmethod
+    def normalize_region(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return ",".join(part.strip() for part in value.split(","))
+        return value
 
-aggregator = Aggregator([HeuristicMouseV1(), BotdV2()])
+
+aggregator = Aggregator([HeuristicMouseV1(), BotdV2(), ExternalFeBotV1()])
 telemetry_events: Deque[Dict[str, Any]] = deque(maxlen=200)
 telemetry_lock = threading.Lock()
 mouse_program_lock = threading.Lock()

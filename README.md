@@ -1,7 +1,7 @@
-# Bot Risk Game
+# MouseRisk Lab
 
 <p align="center">
-  <img src="docs/assets/readme-hero.svg" alt="Aperçu visuel du tableau de bord Bot Risk Game" width="920">
+  <img src="docs/assets/readme-hero.svg" alt="Aperçu visuel du tableau de bord MouseRisk Lab" width="920">
 </p>
 
 <p align="center">
@@ -12,7 +12,7 @@
   <img alt="No training" src="https://img.shields.io/badge/ML-no_training-334155">
 </p>
 
-**Bot Risk Game** est un POC FastAPI + navigateur qui calcule un score de risque bot entre `0` et `1` pendant une interaction de jeu.  
+**MouseRisk Lab** est un POC FastAPI + navigateur qui calcule un score de risque bot entre `0` et `1` pendant une interaction de jeu.  
 Le score combine des signaux d'automatisation du navigateur avec une heuristique sur la dynamique souris/pointeur.
 
 > Ce projet produit un score probabiliste. Il sert à déclencher de la friction ou du monitoring, pas à bannir automatiquement un utilisateur.
@@ -34,7 +34,7 @@ Le score combine des signaux d'automatisation du navigateur avec une heuristique
 ## Interface
 
 <p align="center">
-  <img src="docs/assets/app-preview.svg" alt="Aperçu de l'interface Bot Risk Game" width="920">
+  <img src="docs/assets/app-preview.svg" alt="Aperçu de l'interface MouseRisk Lab" width="920">
 </p>
 
 L'interface affiche la zone de jeu à gauche et un panneau de scoring à droite. Le panneau résume la probabilité de bot, les signaux détectés et les dernières mesures.
@@ -164,12 +164,48 @@ Exemples fournis :
 
 | Fichier | Comportement |
 | --- | --- |
+| `linear_sweep_clicks.py` | Balayage linéaire simple et régulier |
+| `pyautogui_moveto_down_up.py` | Déplacement PyAutoGUI `moveTo`, puis clic gauche `mouseDown` / `mouseUp` |
 | `adaptive_spiral_human.py` | Trajectoires courbes, spirales de stabilisation et timings irréguliers |
-| `human_random.py` | Déplacements aléatoires humanisés |
-| `teleport_grid.py` | Clics très rapides sur une grille |
 | `rapid_center.py` | Double-clics rapides au centre |
+| `teleport_grid.py` | Clics très rapides sur une grille |
+| `obvious_bot_api.py` | Envoi de signaux synthétiques clairement automatisés vers l'API |
 
 Depuis l'interface, sélectionnez le fichier, estimez ou saisissez la région écran, puis lancez le programme.
+
+## Détecteur externe ML optionnel
+
+MouseRisk Lab peut interroger un modèle externe déjà entraîné exposé par une API FastAPI compatible avec `kim-daehyun/bot-serving`.
+
+Lancez `bot-serving` sur le port `8001`, avec une route disponible sur :
+
+```text
+http://127.0.0.1:8001/predict/fe
+```
+
+Le détecteur `external_fe_bot_v1` envoie les features agrégées `duration_ms`, `mousemove_count` et `mousemove_teleport_count` à cette route. Il est optionnel : si l'API externe est indisponible, MouseRisk Lab continue de fonctionner et le signal externe retourne un score `0.0` avec un statut d'erreur.
+
+Vous pouvez remplacer l'URL cible avec la variable d'environnement :
+
+```bash
+EXTERNAL_FE_BOT_URL=http://127.0.0.1:8001/predict/fe
+```
+
+Le dépôt `bot-serving` peut être placé dans `external/bot-serving`. Dans ce cas, `run_server.py` le lance automatiquement en parallèle sur le port `8001` avec son environnement virtuel local si `external/bot-serving/.venv` existe.
+
+Vous pouvez aussi fournir une commande personnalisée :
+
+```powershell
+$env:EXTERNAL_FE_BOT_CWD="C:\chemin\vers\bot-serving"
+$env:EXTERNAL_FE_BOT_CMD="uvicorn app:app --host 127.0.0.1 --port 8001"
+python run_server.py
+```
+
+Si l'application FastAPI de `bot-serving` est exposée par `main.py`, utilisez plutôt :
+
+```powershell
+$env:EXTERNAL_FE_BOT_CMD="uvicorn main:app --host 127.0.0.1 --port 8001"
+```
 
 ## Tests automatisés
 
@@ -204,10 +240,13 @@ Les tests couvrent l'API FastAPI, l'agrégateur, BotD et l'heuristique souris.
 ├── docs/
 │   └── real-test-environment.md
 ├── mouse_programs/
+│   ├── linear_sweep_clicks.py
+│   ├── pyautogui_moveto_down_up.py
 │   ├── adaptive_spiral_human.py
-│   ├── human_random.py
 │   ├── rapid_center.py
-│   └── teleport_grid.py
+│   ├── teleport_grid.py
+│   ├── obvious_bot_api.py
+│   └── human_random.py
 └── tools/
     ├── human_mouse_test.py    # Script de test simple avec pyclick
     └── real_mouse_lab.py      # Lab de mouvements souris réels
