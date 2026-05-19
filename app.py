@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from collections import deque
+from datetime import datetime
 from pathlib import Path
 import subprocess
 import sys
 import threading
 import time
-from typing import Any, Deque, Dict, Optional
+from typing import Any, Deque, Dict, Literal, Optional
 
 from fastapi import FastAPI
 from fastapi import Query
@@ -21,8 +22,10 @@ from detectors.heuristic_mouse_v1 import HeuristicMouseV1
 
 APP_DIR = Path(__file__).resolve().parent
 MOUSE_PROGRAM_DIR = APP_DIR / "mouse_programs"
-MAX_MOUSE_PROGRAM_SECONDS = 15.0
-DEFAULT_MOUSE_CLICK_RATE_HZ = 0.7
+LOG_DIR = APP_DIR / "logs"
+MOUSE_PROGRAM_LOG = LOG_DIR / "mouse_program_runs.log"
+MAX_MOUSE_PROGRAM_SECONDS = 60.0
+DEFAULT_MOUSE_CLICK_RATE_HZ = 2.4
 app = FastAPI(title="MouseRisk Lab — heuristic bot-risk scoring")
 
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
@@ -63,10 +66,14 @@ class FeaturePayload(BaseModel):
 class MouseProgramRunPayload(BaseModel):
     filename: str = Field(..., min_length=1, max_length=120)
     region: str = Field(..., pattern=r"^-?\d+,-?\d+,-?\d+,-?\d+$")
-    count: int = Field(20, ge=1, le=100)
+    count: int = Field(20, ge=1, le=240)
     focus_wait: float = Field(3.0, ge=0.0, le=30.0)
     timeout: float = Field(MAX_MOUSE_PROGRAM_SECONDS, ge=1.0, le=600.0)
     base_url: str = Field("http://127.0.0.1:8000", min_length=1, max_length=200)
+    inner_box_percent: int = Field(70, ge=10, le=100)
+    click_box_percent: int = Field(35, ge=20, le=100)
+    delay_chance: float = Field(0.0, ge=0.0, le=1.0)
+    mouse_button: Literal["left", "right"] = "left"
 
     @field_validator("region", mode="before")
     @classmethod
@@ -80,6 +87,23 @@ aggregator = Aggregator([HeuristicMouseV1(), BotdV2(), ExternalFeBotV1()])
 telemetry_events: Deque[Dict[str, Any]] = deque(maxlen=200)
 telemetry_lock = threading.Lock()
 mouse_program_lock = threading.Lock()
+log_lock = threading.Lock()
+
+
+def append_mouse_program_log(message: str) -> None:
+    LOG_DIR.mkdir(exist_ok=True)
+    timestamp = datetime.now().isoformat(timespec="seconds")
+    with log_lock:
+        with MOUSE_PROGRAM_LOG.open("a", encoding="utf-8") as handle:
+            handle.write(f"[{timestamp}] {message.rstrip()}\n")
+
+
+def process_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
 
 
 def resolve_mouse_program(filename: str) -> Path:
@@ -92,8 +116,8 @@ def resolve_mouse_program(filename: str) -> Path:
     return path
 
 
-def fit_click_count(count: int, focus_wait: float) -> int:
-    runnable_seconds = max(1.0, MAX_MOUSE_PROGRAM_SECONDS - focus_wait - 0.5)
+def fit_click_count(count: int, focus_wait: float, timeout_seconds: float) -> int:
+    runnable_seconds = max(1.0, timeout_seconds - focus_wait - 0.5)
     max_count = max(1, int(runnable_seconds * DEFAULT_MOUSE_CLICK_RATE_HZ))
     return min(count, max_count)
 
@@ -132,31 +156,57 @@ def run_mouse_program(payload: MouseProgramRunPayload) -> Dict[str, Any]:
     try:
         program_path = resolve_mouse_program(payload.filename)
     except FileNotFoundError:
+        append_mouse_program_log(f"REJECT program_not_found filename={payload.filename!r}")
         return {"ok": False, "error": "program_not_found"}
     except ValueError as exc:
+        append_mouse_program_log(f"REJECT invalid_filename filename={payload.filename!r} error={exc}")
         return {"ok": False, "error": str(exc)}
 
     acquired = mouse_program_lock.acquire(blocking=False)
     if not acquired:
+        append_mouse_program_log(f"REJECT program_already_running filename={payload.filename!r}")
         return {"ok": False, "error": "program_already_running"}
 
     started_at = time.time()
     timeout_seconds = min(payload.timeout, MAX_MOUSE_PROGRAM_SECONDS)
-    click_count = fit_click_count(payload.count, payload.focus_wait)
+    click_count = fit_click_count(payload.count, payload.focus_wait, timeout_seconds)
+    command = [
+        sys.executable,
+        "-u",
+        str(program_path),
+        "--base-url",
+        payload.base_url,
+        "--region",
+        payload.region,
+        "--count",
+        str(click_count),
+        "--focus-wait",
+        str(payload.focus_wait),
+    ]
+    if program_path.name == "adaptive_spiral_human_plus.py":
+        command.extend(
+            [
+                "--inner-box-scale",
+                f"{payload.inner_box_percent / 100:.2f}",
+                "--click-box-scale",
+                f"{payload.click_box_percent / 100:.2f}",
+                "--delay-chance",
+                str(payload.delay_chance),
+                "--button",
+                payload.mouse_button,
+            ]
+        )
+
+    append_mouse_program_log(
+        "START "
+        f"filename={payload.filename} requested_count={payload.count} run_count={click_count} "
+        f"focus_wait={payload.focus_wait:.2f}s timeout={timeout_seconds:.2f}s "
+        f"region={payload.region} command={subprocess.list2cmdline(command)}"
+    )
+
     try:
         completed = subprocess.run(
-            [
-                sys.executable,
-                str(program_path),
-                "--base-url",
-                payload.base_url,
-                "--region",
-                payload.region,
-                "--count",
-                str(click_count),
-                "--focus-wait",
-                str(payload.focus_wait),
-            ],
+            command,
             cwd=str(APP_DIR),
             capture_output=True,
             text=True,
@@ -164,15 +214,34 @@ def run_mouse_program(payload: MouseProgramRunPayload) -> Dict[str, Any]:
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
+        duration = time.time() - started_at
+        stdout = process_text(exc.stdout)
+        stderr = process_text(exc.stderr)
+        append_mouse_program_log(
+            "TIMEOUT "
+            f"filename={payload.filename} duration={duration:.2f}s timeout={timeout_seconds:.2f}s "
+            f"stdout={stdout.strip()!r} stderr={stderr.strip()!r}"
+        )
         return {
             "ok": False,
             "error": "timeout",
-            "stdout": exc.stdout or "",
-            "stderr": (exc.stderr or "") + f"\nStopped after {timeout_seconds:.0f}s max runtime.",
-            "duration": time.time() - started_at,
+            "stdout": stdout,
+            "stderr": stderr + f"\nStopped after {timeout_seconds:.0f}s max runtime.",
+            "duration": duration,
+            "log_path": str(MOUSE_PROGRAM_LOG),
+            "started_at": started_at,
+            "finished_at": time.time(),
         }
     finally:
         mouse_program_lock.release()
+
+    duration = time.time() - started_at
+    append_mouse_program_log(
+        "END "
+        f"filename={payload.filename} ok={completed.returncode == 0} "
+        f"returncode={completed.returncode} duration={duration:.2f}s "
+        f"stdout={completed.stdout.strip()!r} stderr={completed.stderr.strip()!r}"
+    )
 
     return {
         "ok": completed.returncode == 0,
@@ -182,7 +251,10 @@ def run_mouse_program(payload: MouseProgramRunPayload) -> Dict[str, Any]:
         "returncode": completed.returncode,
         "stdout": completed.stdout,
         "stderr": completed.stderr,
-        "duration": time.time() - started_at,
+        "duration": duration,
+        "log_path": str(MOUSE_PROGRAM_LOG),
+        "started_at": started_at,
+        "finished_at": started_at + duration,
     }
 
 

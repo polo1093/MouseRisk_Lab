@@ -16,7 +16,8 @@ from pyclick import HumanClicker
 Point = Tuple[int, int]
 Region = Tuple[int, int, int, int]
 _VK_F12 = 0x7B
-DEFAULT_CLICK_RATE_HZ = 0.7
+DEFAULT_CLICK_RATE_HZ = 2.4
+DEFAULT_POST_CLICK_WAIT = 0.025
 
 
 @dataclass(frozen=True)
@@ -121,7 +122,7 @@ class RealMouseActor:
     def human_move_click(self, point: Point, min_duration: float, max_duration: float) -> None:
         check_emergency_stop()
         self.clicker.move(point, random.uniform(min_duration, max_duration))
-        interruptible_sleep(random.uniform(0.04, 0.18))
+        interruptible_sleep(random.uniform(0.02, 0.08))
         check_emergency_stop()
         self.clicker.click()
 
@@ -195,19 +196,19 @@ def run_profile(
         click_started_at = time.monotonic()
         check_emergency_stop()
         if mode == "human":
-            actor.human_move_click(point, min_duration=0.35, max_duration=0.9)
+            actor.human_move_click(point, min_duration=0.16, max_duration=0.34)
         elif mode == "linear":
-            actor.linear_move_click(point, duration=0.35)
+            actor.linear_move_click(point, duration=0.26)
         elif mode == "teleport":
             actor.teleport_click(point)
         elif mode == "double":
-            actor.double_click(point, duration=0.25)
+            actor.double_click(point, duration=0.08)
         elif mode in {"grid", "center"}:
-            actor.linear_move_click(point, duration=0.35)
+            actor.linear_move_click(point, duration=0.26)
         else:
             raise ValueError(f"unsupported mode: {mode}")
 
-        interruptible_sleep(0.25)
+        interruptible_sleep(DEFAULT_POST_CLICK_WAIT)
         score = print_event(index, fetch_latest_event(base_url, session_id))
         if score is not None:
             scores.append(score)

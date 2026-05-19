@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.real_mouse_lab import (
+    DEFAULT_CLICK_RATE_HZ,
     RealMouseActor,
     grid_points,
     health_check,
@@ -31,7 +32,10 @@ def main() -> None:
     health_check(args.base_url)
     actor = RealMouseActor()
     points = grid_points(args.region, args.count)
-    print(f"Program: linear_sweep_clicks | clicks={len(points)} | rate=0.7/s | region={args.region}")
+    print(
+        "Program: linear_sweep_clicks | "
+        f"clicks={len(points)} | rate={DEFAULT_CLICK_RATE_HZ:.2f}/s | region={args.region}"
+    )
     if args.focus_wait:
         print(f"Starting in {args.focus_wait:.1f}s...")
         interruptible_sleep(args.focus_wait)

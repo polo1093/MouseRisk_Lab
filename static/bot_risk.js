@@ -157,6 +157,7 @@ const BotRisk = (() => {
       horizonMs: initialHorizonMs = 10_000,        // fenetre glissante
       minPoints: initialMinPoints = 25,            // nb min d'events pour scorer
       idleUpdateMs = 10_000,     // si aucun clic depuis last update => auto-update après 10s
+      periodicScoreMs = 5_000,   // scoring regulier pendant les runs longs
       housekeepingEveryMs = 500, // purge buffer
       historyEl = null,          // <ul> ou <div> qui reçoit l'historique
       historyMax = 6,            // nb max de lignes visibles
@@ -423,7 +424,7 @@ const BotRisk = (() => {
         const staleScore = (t - lastScoreAt) >= idleUpdateMs;
 
         if (noClickSinceLastUpdate && staleScore) {
-          // score on latest 10s window
+          // score on latest window
           scoreNow("auto");
         }
       } else {
@@ -433,7 +434,15 @@ const BotRisk = (() => {
       }
     }, housekeepingEveryMs);
 
-    setInterval(pullLatestTelemetry, 1500);
+    setInterval(pullLatestTelemetry, 5000);
+
+    if (periodicScoreMs > 0) {
+      setInterval(() => {
+        if (windowPoints().length >= minPoints) {
+          scoreNow("auto");
+        }
+      }, periodicScoreMs);
+    }
 
     if (windowSelectEl) {
       windowSelectEl.value = String(horizonMs);

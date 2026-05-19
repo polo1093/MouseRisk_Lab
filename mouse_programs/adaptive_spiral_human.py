@@ -13,6 +13,7 @@ import pyautogui
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.real_mouse_lab import (
+    DEFAULT_POST_CLICK_WAIT,
     check_emergency_stop,
     fetch_latest_event,
     health_check,
@@ -37,8 +38,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--focus-wait", type=float, default=3.0)
     parser.add_argument("--session-id", default=None)
     parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("--min-duration", type=float, default=0.35)
-    parser.add_argument("--max-duration", type=float, default=0.85)
+    parser.add_argument("--min-duration", type=float, default=0.12)
+    parser.add_argument("--max-duration", type=float, default=0.28)
     parser.add_argument("--spiral-radius", type=float, default=28.0)
     parser.add_argument("--jitter", type=float, default=4.0)
     return parser.parse_args()
@@ -94,22 +95,25 @@ def path_to_target(start: Point, end: Point, region: Region, duration: float, sp
     p1, p2 = control_points(start, end, region)
     steps = max(32, int(duration * random.uniform(58, 86)))
     previous: Optional[Point] = None
+    spiral_turns = random.uniform(8.0, 11.0)
+    noise_phase = random.uniform(0.0, math.tau)
+    noise_amplitude = random.uniform(0.02, 0.12)
 
     for index in range(steps):
         progress = index / max(1, steps - 1)
         eased = ease_in_out(progress)
         point = cubic_bezier(start, p1, p2, end, eased)
 
-        if progress > 0.68:
-            settle = (progress - 0.68) / 0.32
+        if progress > 0.82:
+            settle = min(1.0, max(0.0, (progress - 0.82) / 0.18))
             radius = spiral_radius * (1.0 - settle) ** 1.45
-            angle = settle * random.uniform(8.0, 11.0) * math.pi
+            angle = settle * spiral_turns * math.pi
             point = (
                 point[0] + math.cos(angle) * radius,
                 point[1] + math.sin(angle) * radius * 0.72,
             )
 
-        noise = (1.0 - progress) * random.uniform(-1.8, 1.8)
+        noise = (1.0 - progress) * math.sin((progress * math.tau) + noise_phase) * noise_amplitude
         candidate = clamp_point((point[0] + noise, point[1] - noise * 0.6), region)
         if candidate != previous:
             previous = candidate
@@ -123,19 +127,19 @@ def move_path(points: Iterable[Point], duration: float) -> None:
     base_sleep = duration / len(points)
     for point in points:
         check_emergency_stop()
-        pyautogui.moveTo(point[0], point[1], duration=0)
-        interruptible_sleep(max(0.003, base_sleep * random.uniform(0.45, 1.75)), step=0.01)
+        pyautogui.moveTo(point[0], point[1], duration=max(0.004, base_sleep * 0.65))
+        interruptible_sleep(max(0.001, base_sleep * random.uniform(0.10, 0.45)), step=0.01)
 
 
 def settle_and_click(target: Point, region: Region, jitter: float) -> None:
-    loops = random.randint(2, 5)
+    loops = random.randint(1, 3)
     for _ in range(loops):
         check_emergency_stop()
-        jx = random.uniform(-jitter, jitter)
-        jy = random.uniform(-jitter, jitter)
+        jx = random.uniform(-jitter, jitter) * 0.45
+        jy = random.uniform(-jitter, jitter) * 0.45
         point = clamp_point((target[0] + jx, target[1] + jy), region)
-        pyautogui.moveTo(point[0], point[1], duration=random.uniform(0.025, 0.075))
-        interruptible_sleep(random.uniform(0.025, 0.11), step=0.01)
+        pyautogui.moveTo(point[0], point[1], duration=random.uniform(0.035, 0.09))
+        interruptible_sleep(random.uniform(0.02, 0.075), step=0.01)
     check_emergency_stop()
     pyautogui.click()
 
@@ -166,7 +170,7 @@ def run(args: argparse.Namespace) -> None:
             duration,
         )
         settle_and_click(target, args.region, args.jitter)
-        interruptible_sleep(0.18)
+        interruptible_sleep(DEFAULT_POST_CLICK_WAIT)
         event = fetch_latest_event(args.base_url, args.session_id)
         print_event(index, event)
         if index < args.count:

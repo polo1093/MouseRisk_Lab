@@ -80,12 +80,37 @@ const ProgramRunner = (() => {
       return;
     }
 
-    programs.forEach((program) => {
+    const ordered = [...programs].sort((a, b) => {
+      if (a.filename === "adaptive_spiral_human_plus.py") return -1;
+      if (b.filename === "adaptive_spiral_human_plus.py") return 1;
+      return a.filename.localeCompare(b.filename);
+    });
+
+    ordered.forEach((program) => {
       const option = document.createElement("option");
       option.value = program.filename;
       option.textContent = program.filename;
       selectEl.appendChild(option);
     });
+  }
+
+  function formatPct(score) {
+    return `${Math.round(Number(score || 0) * 100)}%`;
+  }
+
+  function summarizeEvents(events, startedAt) {
+    const runEvents = events.filter((event) => Number(event.ts || 0) >= startedAt);
+    let maxScore = null;
+    let latest = null;
+
+    runEvents.forEach((event) => {
+      const score = Number(event.bot_probability);
+      if (!Number.isFinite(score)) return;
+      if (maxScore === null || score > maxScore) maxScore = score;
+      latest = event;
+    });
+
+    return { runEvents, latest, maxScore };
   }
 
   function start(opts) {
@@ -96,22 +121,56 @@ const ProgramRunner = (() => {
       regionEl,
       countEl,
       focusWaitEl,
+      innerBoxPercentEl,
+      clickBoxPercentEl,
+      delayChanceEl,
+      mouseButtonEl,
+      innerBoxFieldEl,
+      clickBoxFieldEl,
+      delayChanceFieldEl,
+      mouseButtonFieldEl,
       outputEl,
       refreshButton,
       runButton,
       estimateRegionButton,
+      runModeEls = [],
+      telemetryEndpoint = null,
       target,
     } = opts;
+
+    let outputLines = [];
+    let historyLines = [];
+
+    function renderOutput() {
+      setOutput(outputEl, [...outputLines, ...historyLines].join("\n"));
+    }
+
+    function selectedRunMode() {
+      return runModeEls.find((input) => input.checked)?.value || "short";
+    }
 
     async function refreshPrograms() {
       setOutput(outputEl, "Chargement des programmes...");
       try {
         const programs = await getJSON(programsEndpoint);
         renderPrograms(selectEl, programs);
+        syncPlusOptions();
         setOutput(outputEl, `${programs.length} programme(s) disponible(s).`);
       } catch (err) {
         setOutput(outputEl, `Erreur chargement programmes: ${err.message}`);
       }
+    }
+
+    function selectedProgramUsesPlusOptions() {
+      return selectEl.value === "adaptive_spiral_human_plus.py";
+    }
+
+    function syncPlusOptions() {
+      const visible = selectedProgramUsesPlusOptions();
+      if (innerBoxFieldEl) innerBoxFieldEl.hidden = !visible;
+      if (clickBoxFieldEl) clickBoxFieldEl.hidden = !visible;
+      if (delayChanceFieldEl) delayChanceFieldEl.hidden = !visible;
+      if (mouseButtonFieldEl) mouseButtonFieldEl.hidden = !visible;
     }
 
     async function runProgram() {
@@ -123,35 +182,95 @@ const ProgramRunner = (() => {
 
       const count = Number.parseInt(countEl.value, 10);
       const focusWait = Number.parseFloat(focusWaitEl.value);
-      if (!isValidRegion(regionEl.value.trim())) {
-        regionEl.value = estimateScreenRegion(target);
-      }
+      const runMode = selectedRunMode();
+      const timeoutSeconds = runMode === "continuous" ? 60 : 15;
+      const runCount = runMode === "continuous"
+        ? Math.max(1, Math.ceil((timeoutSeconds - (Number.isFinite(focusWait) ? focusWait : 3) - 0.5) * 2.4))
+        : (Number.isFinite(count) ? count : 20);
+      regionEl.value = estimateScreenRegion(target);
       if (!isValidRegion(regionEl.value.trim())) {
         setOutput(outputEl, `Region ecran invalide: ${regionEl.value || "(vide)"}`);
         return;
       }
 
       runButton.disabled = true;
-      setOutput(
-        outputEl,
-        `Lancement de ${filename}...\nRegion utilisee: ${regionEl.value.trim()}\n${describeWindow()}\nF12 pour arreter.`
-      );
+      const startedAt = Date.now() / 1000;
+      let pollTimer = null;
+      historyLines = [];
+      outputLines = [
+        `Lancement de ${filename}...`,
+        `Mode=${runMode === "continuous" ? "60s continu" : "15s"}`,
+        `Region visible rafraichie: ${regionEl.value.trim()}`,
+        describeWindow(),
+        "F12 pour arreter.",
+        "",
+        "HISTORIQUE 5S",
+        "en attente des scores...",
+      ];
+      renderOutput();
+
+      async function appendTelemetrySnapshot(final = false) {
+        if (!telemetryEndpoint) return { latest: null, maxScore: null, runEvents: [] };
+        try {
+          const events = await getJSON(`${telemetryEndpoint}?limit=200`);
+          const summary = summarizeEvents(events, startedAt);
+          const elapsed = Math.max(0, Math.round((Date.now() / 1000) - startedAt));
+          const latestText = summary.latest
+            ? `dernier=${formatPct(summary.latest.bot_probability)} reason=${summary.latest.reason || "?"}`
+            : "aucun score";
+          const maxText = summary.maxScore === null ? "max=--" : `max=${formatPct(summary.maxScore)}`;
+          const prefix = final ? "final" : `t+${elapsed}s`;
+          const line = `${prefix} ${latestText} ${maxText} mesures=${summary.runEvents.length}`;
+          if (historyLines[historyLines.length - 1] !== line) {
+            historyLines.push(line);
+            renderOutput();
+          }
+          return summary;
+        } catch (err) {
+          const line = `telemetrie indisponible: ${err.message}`;
+          if (historyLines[historyLines.length - 1] !== line) {
+            historyLines.push(line);
+            renderOutput();
+          }
+          return { latest: null, maxScore: null, runEvents: [] };
+        }
+      }
 
       try {
-        const result = await postJSON(runEndpoint, {
+        pollTimer = window.setInterval(() => {
+          appendTelemetrySnapshot();
+        }, 5000);
+
+        const payload = {
           filename,
           region: regionEl.value.trim(),
-          count: Number.isFinite(count) ? count : 8,
+          count: runCount,
           focus_wait: Number.isFinite(focusWait) ? focusWait : 3,
-          timeout: 15,
+          timeout: timeoutSeconds,
           base_url: window.location.origin,
-        });
+        };
 
-        const output = [
+        if (selectedProgramUsesPlusOptions()) {
+          payload.inner_box_percent = Number(innerBoxPercentEl.value);
+          payload.click_box_percent = Number(clickBoxPercentEl.value);
+          payload.delay_chance = Number(delayChanceEl.value);
+          payload.mouse_button = mouseButtonEl.value;
+        }
+
+        const result = await postJSON(runEndpoint, payload);
+        if (pollTimer) {
+          window.clearInterval(pollTimer);
+          pollTimer = null;
+        }
+        const telemetrySummary = await appendTelemetrySnapshot(true);
+
+        outputLines = [
           `ok=${result.ok}`,
           `returncode=${result.returncode ?? ""}`,
           `duration=${result.duration ? result.duration.toFixed(2) : "0.00"}s`,
           result.run_count ? `clicks=${result.run_count}/${result.requested_count ?? result.run_count}` : "",
+          telemetrySummary.maxScore === null ? "score_max=--" : `score_max=${formatPct(telemetrySummary.maxScore)}`,
+          result.log_path ? `log=${result.log_path}` : "",
           "",
           "STDOUT",
           result.stdout || "(vide)",
@@ -159,17 +278,22 @@ const ProgramRunner = (() => {
           "STDERR",
           result.stderr || "(vide)",
           result.error ? `\nERROR\n${result.error}` : "",
-        ].join("\n");
-        setOutput(outputEl, output);
+          "",
+          "HISTORIQUE 5S",
+        ];
+        renderOutput();
       } catch (err) {
-        setOutput(outputEl, `Erreur execution: ${err.message}`);
+        outputLines = [`Erreur execution: ${err.message}`, "", "HISTORIQUE 5S"];
+        renderOutput();
       } finally {
+        if (pollTimer) window.clearInterval(pollTimer);
         runButton.disabled = false;
       }
     }
 
     refreshButton.addEventListener("click", refreshPrograms);
     runButton.addEventListener("click", runProgram);
+    selectEl.addEventListener("change", syncPlusOptions);
     estimateRegionButton.addEventListener("click", () => {
       regionEl.value = estimateScreenRegion(target);
       setOutput(outputEl, `Region estimee: ${regionEl.value}\n${describeWindow()}`);
@@ -177,6 +301,7 @@ const ProgramRunner = (() => {
 
     regionEl.value = estimateScreenRegion(target);
     refreshPrograms();
+    syncPlusOptions();
   }
 
   return { start };

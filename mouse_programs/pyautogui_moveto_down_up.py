@@ -33,10 +33,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--focus-wait", type=float, default=3.0)
     parser.add_argument("--seed", type=int, default=None)
-    parser.add_argument("--min-duration", type=float, default=0.18)
-    parser.add_argument("--max-duration", type=float, default=0.42)
-    parser.add_argument("--hold-min", type=float, default=0.035)
-    parser.add_argument("--hold-max", type=float, default=0.095)
+    parser.add_argument("--min-duration", type=float, default=0.12)
+    parser.add_argument("--max-duration", type=float, default=0.28)
+    parser.add_argument("--hold-min", type=float, default=0.015)
+    parser.add_argument("--hold-max", type=float, default=0.05)
     parser.add_argument(
         "--tween",
         choices=("ease-in-out-quad", "ease-out-quad", "linear"),

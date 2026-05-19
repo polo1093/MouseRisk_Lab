@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MouseRisk Lab</title>
-  <link rel="stylesheet" href="/static/style.css?v=20260508-3" />
+  <link rel="stylesheet" href="/static/style.css?v=20260519-1" />
 </head>
 <body>
   <main class="app-shell">
@@ -31,6 +31,19 @@
           <button class="secondary-button icon-button" id="refreshPrograms" type="button" aria-label="Rafraichir les programmes" title="Rafraichir">R</button>
         </div>
 
+        <div class="runner-mode" aria-label="Duree du test">
+          <label>
+            <input name="programRunMode" type="radio" value="short" checked />
+            <span>15s</span>
+          </label>
+          <label>
+            <input name="programRunMode" type="radio" value="continuous" />
+            <span>60s continu</span>
+          </label>
+        </div>
+
+        <details class="runner-advanced">
+          <summary>Options avancees</summary>
         <div class="runner-grid">
           <label>
             Programme
@@ -42,13 +55,33 @@
           </label>
           <label>
             Clics
-            <input id="programCount" type="number" min="1" max="10" value="8" />
+            <input id="programCount" type="number" min="1" max="30" value="20" />
           </label>
           <label>
             Attente focus
             <input id="programFocusWait" type="number" min="0" max="30" step="0.5" value="3" />
           </label>
+          <label id="innerBoxField" hidden>
+            Zone rouge %
+            <input id="programInnerBoxPercent" type="number" min="10" max="100" step="5" value="70" />
+          </label>
+          <label id="clickBoxField" hidden>
+            Zone clic %
+            <input id="programClickBoxPercent" type="number" min="20" max="100" step="5" value="35" />
+          </label>
+          <label id="delayChanceField" hidden>
+            Chance delai
+            <input id="programDelayChance" type="number" min="0" max="1" step="0.1" value="0" />
+          </label>
+          <label id="mouseButtonField" hidden>
+            Bouton
+            <select id="programMouseButton">
+              <option value="left" selected>Gauche</option>
+              <option value="right">Droit</option>
+            </select>
+          </label>
         </div>
+        </details>
 
         <div class="runner-actions">
           <button class="secondary-button" id="estimateRegion" type="button">Zone visible</button>
@@ -56,7 +89,7 @@
         </div>
 
         <div class="runner-note">
-          F12 arrete le script. Duree limitee a 15 secondes.
+          F12 arrete le script. Le mode continu s'arrete automatiquement a 60 secondes.
         </div>
         <pre id="programOutput">Aucun programme lance.</pre>
       </aside>
@@ -100,8 +133,8 @@
           <select id="detectionWindow">
             <option value="1000">1s</option>
             <option value="2000">2s</option>
-            <option value="5000">5s</option>
-            <option value="10000" selected>10s</option>
+            <option value="5000" selected>5s</option>
+            <option value="10000">10s</option>
           </select>
         </label>
 
@@ -118,8 +151,8 @@
 
   </main>
 
-  <script src="/static/bot_risk.js?v=20260508-3"></script>
-  <script src="/static/program_runner.js?v=20260508-3"></script>
+  <script src="/static/bot_risk.js?v=20260519-3"></script>
+  <script src="/static/program_runner.js?v=20260519-3"></script>
   <script>
     BotRisk.start({
       scoreEndpoint: "/api/score",
@@ -134,9 +167,10 @@
       windowSelectEl: document.getElementById("detectionWindow"),
       windowBadgeEl: document.getElementById("windowBadge"),
       target: document.getElementById("playground"),
-      horizonMs: 10000,
-      idleUpdateMs: 10000,
-      minPoints: 15,
+      horizonMs: 5000,
+      idleUpdateMs: 5000,
+      periodicScoreMs: 5000,
+      minPoints: 12,
       historyMax: 6
     });
 
@@ -147,10 +181,20 @@
       regionEl: document.getElementById("programRegion"),
       countEl: document.getElementById("programCount"),
       focusWaitEl: document.getElementById("programFocusWait"),
+      innerBoxPercentEl: document.getElementById("programInnerBoxPercent"),
+      clickBoxPercentEl: document.getElementById("programClickBoxPercent"),
+      delayChanceEl: document.getElementById("programDelayChance"),
+      mouseButtonEl: document.getElementById("programMouseButton"),
+      innerBoxFieldEl: document.getElementById("innerBoxField"),
+      clickBoxFieldEl: document.getElementById("clickBoxField"),
+      delayChanceFieldEl: document.getElementById("delayChanceField"),
+      mouseButtonFieldEl: document.getElementById("mouseButtonField"),
       outputEl: document.getElementById("programOutput"),
       refreshButton: document.getElementById("refreshPrograms"),
       runButton: document.getElementById("runProgram"),
       estimateRegionButton: document.getElementById("estimateRegion"),
+      runModeEls: Array.from(document.querySelectorAll('input[name="programRunMode"]')),
+      telemetryEndpoint: "/api/telemetry",
       target: document.getElementById("playground")
     });
   </script>

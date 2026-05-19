@@ -108,6 +108,7 @@ def test_lists_mouse_programs(client: TestClient) -> None:
     assert response.status_code == 200
     filenames = {program["filename"] for program in response.json()}
     assert "adaptive_spiral_human.py" in filenames
+    assert "adaptive_spiral_human_plus.py" in filenames
     assert "human_random.py" in filenames
     assert "teleport_grid.py" in filenames
     assert "rapid_center.py" in filenames
@@ -203,3 +204,50 @@ def test_run_mouse_program_accepts_legacy_timeout_and_spaced_region(
     body = response.json()
     assert body["ok"] is True
     assert "echo region=1,2,3,4 count=7" in body["stdout"]
+
+
+def test_run_mouse_program_passes_plus_options_only_to_plus_script(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    program_dir = tmp_path / "mouse_programs"
+    program_dir.mkdir()
+    program = program_dir / "adaptive_spiral_human_plus.py"
+    program.write_text(
+        "from __future__ import annotations\n"
+        "import argparse\n"
+        "parser = argparse.ArgumentParser()\n"
+        "parser.add_argument('--base-url')\n"
+        "parser.add_argument('--region')\n"
+        "parser.add_argument('--count')\n"
+        "parser.add_argument('--focus-wait')\n"
+        "parser.add_argument('--inner-box-scale')\n"
+        "parser.add_argument('--click-box-scale')\n"
+        "parser.add_argument('--delay-chance')\n"
+        "parser.add_argument('--button')\n"
+        "args = parser.parse_args()\n"
+        "print(f'inner={args.inner_box_scale} click={args.click_box_scale} delay={args.delay_chance} button={args.button}')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(app_module, "MOUSE_PROGRAM_DIR", program_dir)
+
+    response = client.post(
+        "/api/mouse-programs/run",
+        json={
+            "filename": "adaptive_spiral_human_plus.py",
+            "region": "1,2,3,4",
+            "count": 7,
+            "focus_wait": 0,
+            "timeout": 10,
+            "base_url": "http://testserver",
+            "inner_box_percent": 55,
+            "click_box_percent": 25,
+            "delay_chance": 0.4,
+            "mouse_button": "right",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["returncode"] == 0
+    assert "inner=0.55 click=0.25 delay=0.4 button=right" in body["stdout"]

@@ -100,7 +100,7 @@ h1 {
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(560px, 1fr) minmax(280px, 340px);
+  grid-template-columns: minmax(380px, 430px) minmax(520px, 1fr) minmax(280px, 340px);
   gap: 18px;
   align-items: start;
   width: 100%;
@@ -437,10 +437,10 @@ h1 {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: min(640px, calc(100vh - 40px));
+  height: min(720px, calc(100vh - 40px));
   min-height: 0;
   overflow: hidden;
-  padding: 18px;
+  padding: 20px;
 }
 
 .runner-header {
@@ -464,9 +464,56 @@ h1 {
 
 .runner-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
   margin-top: 16px;
+}
+
+.runner-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.runner-mode label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: #1e3a8a;
+  background: #f8fafc;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.runner-mode input {
+  accent-color: var(--blue);
+}
+
+.runner-mode label:has(input:checked) {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: #dbeafe;
+}
+
+.runner-advanced {
+  margin-top: 12px;
+}
+
+.runner-advanced summary {
+  cursor: pointer;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.runner-grid label:nth-child(1),
+.runner-grid label:nth-child(2) {
+  grid-column: 1 / -1;
 }
 
 .runner-grid label {
@@ -480,7 +527,7 @@ h1 {
 .runner-grid input,
 .runner-grid select {
   width: 100%;
-  min-height: 44px;
+  min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px;
@@ -543,9 +590,9 @@ h1 {
 
 #programOutput {
   flex: 1;
-  min-height: 150px;
+  min-height: 92px;
   max-height: none;
-  margin: 16px 0 0;
+  margin: 14px 0 0;
   overflow: auto;
   border: 1px solid #1f2937;
   border-radius: 12px;
@@ -575,7 +622,12 @@ h1 {
   }
 
   .runner-grid {
-    grid-template-columns: minmax(220px, 1.4fr) minmax(220px, 1.2fr) minmax(100px, 0.5fr) minmax(130px, 0.5fr);
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+  }
+
+  .runner-grid label:nth-child(1),
+  .runner-grid label:nth-child(2) {
+    grid-column: span 2;
   }
 
   .playground-copy {
@@ -609,6 +661,11 @@ h1 {
 
   .runner-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .runner-grid label:nth-child(1),
+  .runner-grid label:nth-child(2) {
+    grid-column: 1 / -1;
   }
 
   .risk-panel {

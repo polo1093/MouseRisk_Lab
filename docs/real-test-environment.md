@@ -94,6 +94,15 @@ python mouse_programs/adaptive_spiral_human.py --region 100,390,1100,760 --count
 
 Ce profil utilise des courbes de Bézier, une petite spirale de stabilisation avant le clic, du jitter contrôlé et des pauses variables. Il sert à tester si l'heuristique souris résiste à un script plus soigné.
 
+Variante contrainte dans une box centrale :
+
+```bash
+python mouse_programs/adaptive_spiral_human_plus.py --region 100,390,1100,760 --count 20 --focus-wait 3 --inner-box-scale 0.70 --click-box-scale 0.35 --delay-chance 0.5
+```
+
+Cette variante utilise `--region` comme zone de jeu, genere une box rouge aleatoire a l'interieur, genere une box verte aleatoire dans la rouge, puis declenche `mouseDown` / timer / `mouseUp` des que la trajectoire entre dans la box verte. La souris continue ensuite sa course jusqu'a la cible dans cette zone.
+La spirale est lissee par trajet : sa frequence est choisie une seule fois, avec un bruit faible et continu pour eviter les tremblements.
+
 ## Profils disponibles
 
 | Mode | But |

@@ -167,11 +167,31 @@ Exemples fournis :
 | `linear_sweep_clicks.py` | Balayage linéaire simple et régulier |
 | `pyautogui_moveto_down_up.py` | Déplacement PyAutoGUI `moveTo`, puis clic gauche `mouseDown` / `mouseUp` |
 | `adaptive_spiral_human.py` | Trajectoires courbes, spirales de stabilisation et timings irréguliers |
-| `rapid_center.py` | Double-clics rapides au centre |
+| `adaptive_spiral_human_plus.py` | Box verte aleatoire dans la zone rouge, clic down/up a l'entree |
+| `human_random.py` | Déplacements aléatoires humanisés |
 | `teleport_grid.py` | Clics très rapides sur une grille |
+| `rapid_center.py` | Double-clics rapides au centre |
 | `obvious_bot_api.py` | Envoi de signaux synthétiques clairement automatisés vers l'API |
 
 Depuis l'interface, sélectionnez le fichier, estimez ou saisissez la région écran, puis lancez le programme.
+
+### Réutiliser `adaptive_spiral_human_plus.py`
+
+La partie réutilisable du profil expose deux fonctions publiques :
+
+```python
+from mouse_programs.adaptive_spiral_human_plus import click_point, click_zone
+
+click_point((500, 400), button="left")
+
+result = click_zone(
+    region=(100, 390, 1100, 760),
+    button="right",
+    click_box_scale=0.35,
+)
+```
+
+`click_point` vise un point précis. `click_zone` reçoit une zone rouge, génère une zone verte aléatoire dedans, puis déclenche `mouseDown` / `mouseUp` à l'entrée dans la zone verte.
 
 ## Détecteur externe ML optionnel
 
@@ -243,6 +263,7 @@ Les tests couvrent l'API FastAPI, l'agrégateur, BotD et l'heuristique souris.
 │   ├── linear_sweep_clicks.py
 │   ├── pyautogui_moveto_down_up.py
 │   ├── adaptive_spiral_human.py
+│   ├── adaptive_spiral_human_plus.py
 │   ├── rapid_center.py
 │   ├── teleport_grid.py
 │   ├── obvious_bot_api.py
