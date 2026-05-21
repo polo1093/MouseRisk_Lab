@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="420" viewBox="0 0 760 420" role="img" aria-labelledby="title desc">
   <title id="title">Schema personal_arc_click</title>
-  <desc id="desc">La souris part de sa position actuelle, suit un grand arc, depasse la cible, puis revient par un second arc pour cliquer precisement.</desc>
+  <desc id="desc">La souris part de sa position actuelle, suit un grand arc, depasse un point fantome choisi dans la zone, puis revient par une correction courte pour cliquer precisement.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#EFF6FF"/>
@@ -31,30 +31,21 @@
     <circle cx="205" cy="132" r="4" fill="#EF4444"/>
   </g>
 
-  <g filter="url(#softShadow)">
-    <circle cx="612" cy="226" r="25" fill="#FFFFFF" stroke="#2563EB" stroke-width="8"/>
-    <circle cx="612" cy="226" r="13" fill="#FFFFFF" stroke="#EF4444" stroke-width="7"/>
-    <circle cx="612" cy="226" r="4" fill="#EF4444"/>
-  </g>
+  <rect x="238" y="205" width="210" height="120" rx="4" fill="rgba(219,234,254,0.42)" stroke="#F43F5E" stroke-width="4"/>
+  <text x="343" y="197" text-anchor="middle" fill="#BE123C" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="900">zone indiquee</text>
 
-  <g filter="url(#softShadow)">
-    <circle cx="485" cy="362" r="25" fill="#FFFFFF" stroke="#2563EB" stroke-width="8"/>
-    <circle cx="485" cy="362" r="13" fill="#FFFFFF" stroke="#EF4444" stroke-width="7"/>
-    <circle cx="485" cy="362" r="4" fill="#EF4444"/>
-  </g>
+  <circle cx="334" cy="268" r="12" fill="#FFFFFF" fill-opacity="0.7" stroke="#16A34A" stroke-width="4" stroke-dasharray="5 5"/>
+  <circle cx="334" cy="268" r="3.5" fill="#16A34A"/>
+  <text x="281" y="251" fill="#166534" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="900">point fantome</text>
 
-  <rect x="240" y="205" width="170" height="115" rx="4" fill="rgba(219,234,254,0.42)" stroke="#F43F5E" stroke-width="4"/>
-  <circle cx="455" cy="286" r="7" fill="#F43F5E"/>
-  <text x="455" y="270" text-anchor="middle" fill="#BE123C" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="800">depassement</text>
+  <circle cx="402" cy="290" r="7" fill="#F43F5E"/>
+  <text x="402" y="309" text-anchor="middle" fill="#BE123C" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="800">depassement</text>
 
-  <path d="M 60 74 C 38 166 88 247 170 286 C 242 320 336 301 455 286" fill="none" stroke="#F43F5E" stroke-width="5" stroke-linecap="round"/>
-  <path d="M 455 286 C 468 258 463 235 448 218 C 437 206 425 201 410 205" fill="none" stroke="#F43F5E" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 60 74 C 36 170 82 252 172 291 C 242 322 327 311 402 290" fill="none" stroke="#F43F5E" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 402 290 L 334 268" fill="none" stroke="#F43F5E" stroke-width="5" stroke-linecap="round"/>
 
-  <path d="M 444 287 L 455 286 L 447 279" fill="none" stroke="#F43F5E" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M 419 205 L 410 205 L 415 214" fill="none" stroke="#F43F5E" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-
-  <circle cx="410" cy="205" r="9" fill="#FFFFFF" stroke="#16A34A" stroke-width="4"/>
-  <text x="418" y="190" fill="#166534" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="900">point precis clique</text>
+  <path d="M 391 288 L 402 290 L 394 282" fill="none" stroke="#F43F5E" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 345 270 L 334 268 L 342 276" fill="none" stroke="#F43F5E" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
 
   <g font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="800">
     <text x="84" y="340" fill="#334155">1. grand arc rapide</text>

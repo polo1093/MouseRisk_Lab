@@ -209,7 +209,7 @@ result = click_zone(
 
 ### Réutiliser `personal_arc_click.py`
 
-Cette variante reproduit un geste en deux temps : depart depuis la position souris actuelle, grand arc rapide qui depasse la cible, retour par un deuxieme arc vers le point exact, petite pause, puis clic.
+Cette variante reproduit un geste en deux temps : depart depuis la position souris actuelle, grand arc rapide qui depasse un point fantome choisi dans la zone, correction courte vers ce point exact, petite pause, puis clic.
 Les courbes par defaut sont reglees environ 1.5x plus marquees que la premiere version, sans aller au-dela pour garder un geste naturel.
 
 <p align="center">
