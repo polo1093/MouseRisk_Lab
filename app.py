@@ -26,6 +26,7 @@ LOG_DIR = APP_DIR / "logs"
 MOUSE_PROGRAM_LOG = LOG_DIR / "mouse_program_runs.log"
 MAX_MOUSE_PROGRAM_SECONDS = 60.0
 DEFAULT_MOUSE_CLICK_RATE_HZ = 2.4
+BUTTON_MOUSE_PROGRAMS = {"adaptive_spiral_human_plus.py", "personal_arc_click.py"}
 app = FastAPI(title="MouseRisk Lab — heuristic bot-risk scoring")
 
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
@@ -192,10 +193,10 @@ def run_mouse_program(payload: MouseProgramRunPayload) -> Dict[str, Any]:
                 f"{payload.click_box_percent / 100:.2f}",
                 "--delay-chance",
                 str(payload.delay_chance),
-                "--button",
-                payload.mouse_button,
             ]
         )
+    if program_path.name in BUTTON_MOUSE_PROGRAMS:
+        command.extend(["--button", payload.mouse_button])
 
     append_mouse_program_log(
         "START "

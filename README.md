@@ -160,6 +160,19 @@ Chaque fichier doit accepter ces arguments CLI :
 --base-url http://127.0.0.1:8000 --region x1,y1,x2,y2 --count 20 --focus-wait 3
 ```
 
+Pour créer un nouveau cliqueur réutilisable, exposez aussi ces 3 fonctions globales :
+
+```python
+def moveTo(point, *, region=None, **options):
+    """Déplace la souris vers un point, sans cliquer."""
+
+def click_point(point, *, button="left", region=None, **options):
+    """Clique un point précis."""
+
+def click_zone(*, region, button="left", **options):
+    """Choisit un point dans la zone, puis appelle click_point(...)."""
+```
+
 Exemples fournis :
 
 | Fichier | Comportement |
@@ -168,6 +181,7 @@ Exemples fournis :
 | `pyautogui_moveto_down_up.py` | Déplacement PyAutoGUI `moveTo`, puis clic gauche `mouseDown` / `mouseUp` |
 | `adaptive_spiral_human.py` | Trajectoires courbes, spirales de stabilisation et timings irréguliers |
 | `adaptive_spiral_human_plus.py` | Box verte aleatoire dans la zone rouge, clic down/up a l'entree |
+| `personal_arc_click.py` | Grand arc rapide, depassement de la cible, retour par arc, puis clic precis |
 | `human_random.py` | Déplacements aléatoires humanisés |
 | `teleport_grid.py` | Clics très rapides sur une grille |
 | `rapid_center.py` | Double-clics rapides au centre |
@@ -192,6 +206,29 @@ result = click_zone(
 ```
 
 `click_point` vise un point précis. `click_zone` reçoit une zone rouge, génère une zone verte aléatoire dedans, puis déclenche `mouseDown` / `mouseUp` à l'entrée dans la zone verte.
+
+### Réutiliser `personal_arc_click.py`
+
+Cette variante reproduit un geste en deux temps : depart depuis la position souris actuelle, grand arc rapide qui depasse la cible, retour par un deuxieme arc vers le point exact, petite pause, puis clic.
+Les courbes par defaut sont reglees environ 1.5x plus marquees que la premiere version, sans aller au-dela pour garder un geste naturel.
+
+<p align="center">
+  <img src="docs/assets/personal-arc-click.svg" alt="Schema du mouvement personal_arc_click" width="760">
+</p>
+
+```python
+from mouse_programs.personal_arc_click import click_point, click_zone, moveTo
+
+moveTo((450, 350))
+click_point((500, 400), button="left")
+
+result = click_zone(
+    region=(100, 390, 1100, 760),
+    button="right",
+)
+```
+
+`moveTo` deplace sans cliquer. `click_point` clique un point precis. `click_zone` choisit un point dans la zone donnee, puis appelle `click_point`.
 
 ## Détecteur externe ML optionnel
 
@@ -264,6 +301,7 @@ Les tests couvrent l'API FastAPI, l'agrégateur, BotD et l'heuristique souris.
 │   ├── pyautogui_moveto_down_up.py
 │   ├── adaptive_spiral_human.py
 │   ├── adaptive_spiral_human_plus.py
+│   ├── personal_arc_click.py
 │   ├── rapid_center.py
 │   ├── teleport_grid.py
 │   ├── obvious_bot_api.py
