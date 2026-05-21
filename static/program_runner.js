@@ -80,9 +80,15 @@ const ProgramRunner = (() => {
       return;
     }
 
+    const priority = ["personal_arc_click.py", "adaptive_spiral_human_plus.py"];
     const ordered = [...programs].sort((a, b) => {
-      if (a.filename === "adaptive_spiral_human_plus.py") return -1;
-      if (b.filename === "adaptive_spiral_human_plus.py") return 1;
+      const aPriority = priority.indexOf(a.filename);
+      const bPriority = priority.indexOf(b.filename);
+      if (aPriority !== -1 || bPriority !== -1) {
+        if (aPriority === -1) return 1;
+        if (bPriority === -1) return -1;
+        return aPriority - bPriority;
+      }
       return a.filename.localeCompare(b.filename);
     });
 
@@ -165,12 +171,16 @@ const ProgramRunner = (() => {
       return selectEl.value === "adaptive_spiral_human_plus.py";
     }
 
+    function selectedProgramUsesButtonOption() {
+      return selectEl.value === "adaptive_spiral_human_plus.py" || selectEl.value === "personal_arc_click.py";
+    }
+
     function syncPlusOptions() {
-      const visible = selectedProgramUsesPlusOptions();
-      if (innerBoxFieldEl) innerBoxFieldEl.hidden = !visible;
-      if (clickBoxFieldEl) clickBoxFieldEl.hidden = !visible;
-      if (delayChanceFieldEl) delayChanceFieldEl.hidden = !visible;
-      if (mouseButtonFieldEl) mouseButtonFieldEl.hidden = !visible;
+      const plusVisible = selectedProgramUsesPlusOptions();
+      if (innerBoxFieldEl) innerBoxFieldEl.hidden = !plusVisible;
+      if (clickBoxFieldEl) clickBoxFieldEl.hidden = !plusVisible;
+      if (delayChanceFieldEl) delayChanceFieldEl.hidden = !plusVisible;
+      if (mouseButtonFieldEl) mouseButtonFieldEl.hidden = !selectedProgramUsesButtonOption();
     }
 
     async function runProgram() {
@@ -254,6 +264,9 @@ const ProgramRunner = (() => {
           payload.inner_box_percent = Number(innerBoxPercentEl.value);
           payload.click_box_percent = Number(clickBoxPercentEl.value);
           payload.delay_chance = Number(delayChanceEl.value);
+        }
+
+        if (selectedProgramUsesButtonOption()) {
           payload.mouse_button = mouseButtonEl.value;
         }
 
